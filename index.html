@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codzienny Horoskop</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+    font-family: sans-serif;
+  }
+
+  /* Tło wideo */
+  #videoPlayer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: black;
+    z-index: 0;
+    display: none;
+    playsinline: true;
+  }
+
+  #bottomBar {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+  }
+
+  #button {
+    padding: 30px 60px;
+    font-size: 28px;
+    color: white;
+    background: linear-gradient(145deg, #e74c3c, #c0392b);
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+    transition: transform 0.1s, box-shadow 0.1s;
+    position: relative;
+    z-index: 1;
+  }
+
+  #button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  }
+
+  #cursorGif {
+    margin-top: -35px;
+    width: 120px;
+    height: auto;
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  #catCursor {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100px;
+    cursor: pointer;
+    z-index: 15;
+  }
+
+  #catCursorGif {
+    position: fixed;
+    top: 10px;       
+    right: 10px;     
+    width: 25px;     
+    height: auto;
+    z-index: 16;
+    pointer-events: none;
+  }
+
+  #scPlayer {
+    display: none;
+  }
+
+  #horoscopeButton {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    font-size: 18px;
+    color: white;
+    background: #3498db;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    z-index: 12;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  }
+
+  #horoscopeButton:hover {
+    background: #2980b9;
+  }
+
+  #horoscopeBubble {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    max-width: 250px;
+    padding: 15px;
+    background: rgba(255,255,255,0.9);
+    color: black;
+    font-size: 16px;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    display: none;
+    z-index: 13;
+  }
+</style>
+</head>
+<body>
+
+<video id="videoPlayer" playsinline></video>
+
+<div id="bottomBar">
+  <button id="button">Pierdolnij się w łeb</button>
+  <img id="cursorGif" src="cursor.gif" alt="Kliknij tutaj">
+</div>
+
+<img id="catCursor" src="cat.gif" alt="Kliknij kota">
+
+<iframe id="scPlayer" 
+  width="1" height="1" scrolling="no" frameborder="no" allow="autoplay"
+  src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A708340477&auto_play=false">
+</iframe>
+
+<button id="horoscopeButton">Prawdziwy horoskop</button>
+<div id="horoscopeBubble"></div>
+
+<script src="https://w.soundcloud.com/player/api.js"></script>
+<script>
+const button = document.getElementById('button');
+const videoPlayer = document.getElementById('videoPlayer');
+const catCursor = document.getElementById('catCursor');
+const scIframe = document.getElementById('scPlayer');
+const widget = SC.Widget(scIframe);
+
+const horoscopeButton = document.getElementById('horoscopeButton');
+const horoscopeBubble = document.getElementById('horoscopeBubble');
+
+let soundWasPlaying = false;
+
+const horoscopes = [
+"Baran: Zepsuje ci się zamek w drzwiach, a potem błotnik odpadnie. Będziesz jeździć wrakiem, który brzmi jak garnki na schodach.",
+"Byk: Kupisz awokado. Przejdzie z etapu \"kamień\" do \"gnijąca maź\" w 30 sekund. Nie zjesz go.",
+"Bliźnięta: Poznasz swoją miłość. Okaże się, że ma głos bardziej wrzaskliwy niż piła łańcuchowa. Będziecie szczęśliwi.",
+"Rak: Odwiedzi cię rodzina. Zostaną na weekend. Zostaną na miesiąc. Zostaną na zawsze. Twój dom nie jest już twoim domem.",
+"Lew: Zrobisz idealne selfie. Zauważysz je na plecach twojej głowy. Ktoś cię wyśmieje. Pęknie cię serce.",
+"Panna: Twoja ulubiona seria zostanie zdjęta z platformy. Zostanie zastąpiona reality show o ludziach, którzy myją kostki brukowej.",
+"Waga: Pójdziesz na randkę. Będzie idealnie. Na koniec powie, że jesteś… zbyt miły/ła. Umrzesz z braku dramatu.",
+"Skorpion: Odkryjesz mroczny sekret szefa. Sekret będzie tak żenujący, że nie będziesz mógł go użyć. Będziesz cierpiał w milczeniu.",
+"Strzelec: Zaplanujesz podróż życia. Zostaniesz okradziony na lotnisku. Twoja podróż życia będzie teraz podróżą na komisariat.",
+"Koziorożec: Otrzymasz awans. Będzie wiązał się z przenosinami do pokoju bez okna, który sąsiaduje z serwerownią. Będziesz słyszeć tylko brzęczenie.",
+"Wodnik: Wymyślisz coś genialnego. Ktoś inny w tym samym czasie to opatentuje. Zostaniesz pionkiem w swojej własnej grze.",
+"Ryby: Będziesz mieć proroczy sen. Będzie dotyczył tego, że zgubisz klucze. Rano zgubisz klucze. Sen był bezużyteczny.",
+"Baran: Twoje nowe, supermodne buty będą idealnie pasować na lewą nogę. Prawa będzie cierpiała w męczarniach. Będziesz kuleć, ale stylowo.",
+"Byk: Znajdziesz idealny apartament w świetnej cenie. Agentka nieruchomości będzie mówić wyłącznie rymami. \"To mieszkanie jest super, nie ma tu żadnych wkurów!\" Zrezygnujesz po 10 minutach.",
+"Bliźnięta: Pójdziesz na terapię. Twój terapeuta będzie płakać głośniej niż ty. To ty zapłacisz za jego chusteczki.",
+"Rak: Postanowisz być zdrowy. Twoje ciało rozwinie alergię na wodę, sałatę i dobry nastrój. Wrócisz do chipsów, bo na nie jesteś uczulony.",
+"Lew: Założysz własny kanał na YouTube. Twoim jedynym widzem będzie troll z Rosji, który będzie krytykował twój połysk paznokci. Zostaniesz jego przyjacielem.",
+"Panna: Twoja lista rzeczy do zrobienia urosnie do rozmiarów encyklopedii. Punkt pierwszy: \"Spalić listę rzeczy do zrobienia\". Nie będziesz mieć nawet na to czasu.",
+"Waga: Pójdziesz do nowej, modnej restauracji. Kelner będzie tak piękny, że zapomnisz własnego imienia. Zamówisz coś, na co masz alergię, tylko po to, żeby na ciebie spojrzał.",
+"Skorpion: Twoja aura tajemniczości zostanie zastąpiona przez aurę \"gościa, któremu zawsze wiatr rozwiewa włosy w złą stronę\". Ludzie będą się od ciebie odwracać, żeby nie parsknąć śmiechem.",
+"Strzelec: Twoja spontaniczna podróż autostopem skończy się w furgonetce pełnej mężczyzn śpiewających disco polo. Polubisz to. Twoi przyjaciele się od ciebie odwrócą.",
+"Koziorożec: Twoja 5-letnia strategia rozwoju osobistego zostanie zrealizowana w 2 dni przez następcę w pracy. Awansuje on dzięki twojemu pomysłowi. Dostaniesz podwyżkę o 1%.",
+"Wodnik: Wymyślisz nowy język, który połączy wszystkich ludzi. Nikt go nie zrozumie, nawet ty. Będziesz mówił nim do siebie w lustrze i się złościł.",
+"Ryby: Będziesz płakać podczas reklamy karmy dla kotów. Twój kot spojrzy na ciebie z pogardą. To on tak naprawdę rządzi domem, a ty jesteś tylko jego sługą. Wreszcie to zrozumiesz.",
+"Baran: Zepsuje ci się pralka akurat gdy będziesz w środku ulubiony sweter. Wyciągniesz go trzy rozmiary mniejsze.",
+"Byk: Ugryziesz się w policzek podczas jedzenia kanapki. Rana będzie goić się tak wolno, że zdążysz opowiedzieć jej całe swoje życie.",
+"Bliźnięta: Twoja nowa roślina doniczkowa zachoruje na nieznaną botaniczną chorobę. Będziesz musiał ją odizolować od innych roślin i zapewnić terapię.",
+"Rak: Sąsiad zacznie remont. Będzie wiercić tylko wtedy, gdy będziesz kłaść się spać lub oglądać kluczową scenę w ulubionym serialu.",
+"Lew: Na ważnym spotkaniu odkryjesz, że masz na sobie skarpetki w dwóch różnych kolorach. Nikt nie powie ci tego wprost, ale wszyscy będą wiedzieć.",
+"Panna: Twój ulubiony długopis nagle przestanie pisać. Żaden inny nie będzie już tak idealnie pasował do twojej dłoni.",
+"Waga: Pójdziesz do fryzjera po drobne poprawki. Wyjdziesz z fryzurą przypominającą nastoletniego idola z lat 90.",
+"Skorpion: Dowiesz się, że twoje drugie imię to tak naprawdę imię po dawnym rodzinnym kocie. To wiele tłumaczy.",
+"Strzelec: Kupisz buty do biegania. Następnego dnia złamiesz nogę na schodach własnego domu.",
+"Koziorożec: Twoja ulubiona kawiarnia zmieni recepturę ciasta marchewkowego. To już nie będzie to samo. Nic już nie będzie.",
+"Wodnik: Stworzysz genialny żart. Zrozumiesz jego geniusz dopiero tydzień później, gdy będzie już nie na miejscu.",
+"Ryby: Pójdziesz na spacer, żeby oczyścić umysł. Cały czas będziesz nucić pod nosem reklamę, której nienawidzisz.",
+"Baran: Zawsze będziesz stać w tej wolniejszej kolejce w sklepie. Nawet jak się przestawisz, ta nowa nagle zwolni.",
+"Byk: Twój telefon będzie się rozładowywał dokładnie dwa razy szybciej, niż wynosi średnia dla twojego modelu.",
+"Bliźnięta: Zawsze będziesz o krok od złapania zielonego światła. Zawsze zmieni się na czerwone tuż przed twoim nosem.",
+"Rak: Zapomnisz hasła do netfliksa akurat w piątek wieczorem. Odzyskanie dostępu zajmie ci cały weekend.",
+"Lew: Twoja pizza zawsze będzie przychodzić zimna. Nawet jak zamówisz ją z pizzerii oddalonej o 100 metrów.",
+"Panna: Będziesz miał koszmar, że śpisz na jawie. Obudzisz się bardziej zmęczony, niż gdy szedłeś spać.",
+"Waga: Twoje ulubione spodnie mają dziurkę w kroku. Odkryjesz to podczas ważnej prezentacji.",
+"Skorpion: Twój pies będzie cię kochał bezwarunkowo, ale zawsze będzie sikać na twoje najdroższe buty.",
+"Strzelec: Gdziekolwiek usiądziesz w kinie, przed tobą usiądzie najwyższa osoba na świecie.",
+"Koziorożec: Twoje roślinki doniczkowe będą umierać z tęsknoty za tobą, nawet gdy wyjdziesz tylko po odbiór paczki.",
+"Wodnik: Twoje genialne pomysły będą przychodzić wyłącznie pod prysznicem. Zapomnisz je wszystkie zanim znajdziesz ręcznik.",
+"Ryby: Będziesz czuć zapach spalenizny. Tylko ty go będziesz czuć. Nikt inny. To doprowadzi cię do obłędu.",
+"Baran: Zawsze będziesz stać w tej jednej kolejce w sklepie, gdzie kasjer musi zmienić taśmę, a klient przed tobą ma problem z kartą płatniczą.",
+"Byk: Twoje ulubione ciastko w cukierni zawsze będzie sprzedane na pięć minut przed twoim przyjściem. Zastąpi je tylko suchy rogalik.",
+"Bliźnięta: Każda twoja biała koszula będzie przyciągać błoto z niespotykaną siłą, nawet podczas suszy.",
+"Rak: Sąsiad akurat postanowi rozpocząć naukę gry na trąbce. O godzinie 23:00. W niedzielę.",
+"Lew: Twoja nowa fryzura będzie wyglądać idealnie tylko w salonie fryzjerskim. Potem już nigdy.",
+"Panna: Odkryjesz, że twoje ulubione skarpetki nie do pary. Dopiero gdy będziesz w pracy.",
+"Waga: Twoja kanapka zawsze będzie spadać na stronę posmarowaną masłem. Bez wyjątku.",
+"Skorpion: Twój telefon będzie miał idealny zasięg wszędzie, tylko nie w twoim własnym domu.",
+"Strzelec: Deszcz będzie padać dokładnie w momencie, gdy wyjdziesz z domu bez parasola.",
+"Koziorożec: Windy będą psuć się akurat gdy się spieszysz. Schody staną się twoim przeznaczeniem.",
+"Wodnik: Zawsze będziesz trafiać na czerwone światło gdy spieszysz się na ważne spotkanie.",
+"Ryby: Twoje nowe buty będą idealnie pasować na lewą nogę. Prawa będzie cierpiała w milczeniu.",
+"Baran: Mleko w lodówce zawsze będzie się kończyć akurat gdy najbardziej potrzebujesz kawy.",
+"Byk: Prąd zgaśnie zawsze podczas najciekawszej sceny w filmie. Na dłużej niż myślisz.",
+"Bliźnięta: Zawsze zapomnisz jednego składnika z przepisu. Tego najważniejszego.",
+"Rak: Twój pies będzie szczekać najgłośniej właśnie gdy rozmawiasz przez telefon z szefem.",
+"Lew: Plama na koszuli pojawi się zawsze przed ważnym spotkaniem. I będzie niemożliwa do usunięcia.",
+"Panna: Internet będzie działać idealnie, aż do momentu gdy zaczniesz ważną wideorozmowę.",
+"Waga: Zawsze zabraknie ci jednej sztuki ulubionego produktu w promocji. Ostatniej.",
+"Skorpion: Twój samochód będzie się psuł tylko w długi weekend. I tylko daleko od warsztatów.",
+"Strzelec: Gniazdko w kawiarni będzie działać tylko gdy nie potrzebujesz ładować telefonu.",
+"Koziorożec: Ekspres do kawy będzie się psuł tylko przed twoim ważnym porannym spotkaniem.",
+"Wodnik: Zawsze trafisz na zamknięty sklep gdy będziesz potrzebować czegoś najbardziej.",
+"Ryby: Twój budzik będzie zawodził tylko w dni, kiedy musisz być punktualnie.",
+"Baran: Parasol będzie się odwracać na drugą stronę przy pierwszym podmuchu wiatru.",
+"Byk: Jedyny wolny fotel w autobusie będzie zawsze nakryty czymś mokrym.",
+"Bliźnięta: Zawsze stłuczesz ulubiony kubek. Tego dnia, gdy najbardziej go potrzebujesz.",
+"Rak: Słoik z ogórkami będzie się wysypywać akurat gdy sprzątasz kuchnię.",
+"Lew: Najlepsze kawałki w radiu będą grane gdy musisz wysiąść z samochodu.",
+"Panna: Zepsuje się zamek w spodniach akurat gdy założysz swoją ulubioną parę.",
+"Waga: Bateria w pilocie do telewizora będzie się kończyć podczas finału ulubionego serialu.",
+"Skorpion: Zawsze zapomnisz hasła do bankowości gdy będziesz musiał pilnie zapłacić rachunek.",
+"Strzelec: Najlepsze miejsce parkingowe będzie zawsze zajęte przez hulajnogę.",
+"Koziorożec: Poczujesz nagłą potrzebę skorzystania z toalety gdy winda będzie na 10 piętrze.",
+"Wodnik: Znajdziesz idealny prezent dla przyjaciela. Tydzień po jego urodzinach.",
+"Ryby: Twoja herbata będzie ostygać dwa razy szybciej niż wszystkim innym."
+];
+
+button.addEventListener('click', () => {
+  // sprawdzamy czy muzyka gra
+  widget.isPaused(paused => {
+    soundWasPlaying = !paused; // zapamiętujemy stan muzyki
+    if (!paused) widget.pause(); // pauzujemy muzykę
+  });
+
+  const randomNum = Math.floor(Math.random() * 41) + 1;
+  const fileName = randomNum + '.mp4';
+  console.log('Próbuję odtworzyć:', fileName);
+
+  videoPlayer.src = fileName;
+  videoPlayer.style.display = 'block';
+  videoPlayer.play().catch(err => console.error(err));
+});
+
+videoPlayer.addEventListener('ended', () => {
+  videoPlayer.style.display = 'none';
+  if (soundWasPlaying) widget.play();
+});
+
+catCursor.addEventListener('click', () => {
+  widget.play();
+});
+
+horoscopeButton.addEventListener('click', () => {
+  const randomIndex = Math.floor(Math.random() * horoscopes.length);
+  horoscopeBubble.textContent = horoscopes[randomIndex];
+  horoscopeBubble.style.display = 'block';
+});
+
+const BIN_ID = "68d88d33d0ea881f408d5bd6";
+const API_KEY = "$2a$10$L6om7.lTGeJDpQhCp14jgOQk.hnZ3vaxlhOu.uUeSByZr6wciJymW";
+
+async function updateVisitCount() {
+    try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+            headers: { "X-Master-Key": API_KEY }
+        });
+        const data = await res.json();
+        let visits = data.record.visits || 0;
+
+        visits++;
+
+        await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Master-Key": API_KEY
+            },
+            body: JSON.stringify({ visits })
+        });
+
+        let counterElem = document.getElementById('visitCounter');
+        if (!counterElem) {
+            counterElem = document.createElement('div');
+            counterElem.id = 'visitCounter';
+            counterElem.style.position = 'fixed';
+            counterElem.style.bottom = '10px';
+            counterElem.style.left = '10px';
+            counterElem.style.color = '#333333';
+            counterElem.style.background = 'rgba(0,0,0,0.5)';
+            counterElem.style.padding = '5px 10px';
+            counterElem.style.borderRadius = '10px';
+            counterElem.style.fontFamily = 'sans-serif';
+	        counterElem.style.fontSize = '12px';
+            document.body.appendChild(counterElem);
+        }
+        counterElem.textContent = visits;
+
+    } catch (err) {
+        console.error('Visit count error:', err);
+    }
+}
+
+updateVisitCount();
+
+</script>
+
+</body>
+
+</html>
+
+
+
+
